@@ -109,6 +109,7 @@ class General(jenkins_jobs.modules.base.Base):
         jdk = data.get('jdk', None)
         if jdk:
             XML.SubElement(xml, 'jdk').text = jdk
+        xml.append(XML.Comment(' ' + data['name'].replace('--', '-\\-') + ' '))
         XML.SubElement(xml, 'actions')
         desc_text = data.get('description', None)
         if desc_text is not None:
