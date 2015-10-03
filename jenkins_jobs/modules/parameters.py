@@ -36,6 +36,8 @@ Example::
 import xml.etree.ElementTree as XML
 import jenkins_jobs.modules.base
 from jenkins_jobs.errors import JenkinsJobsException
+from jenkins_jobs.errors import MissingAttributeError
+from jenkins_jobs.modules.helpers import copyartifact_build_selector
 
 
 def base_param(parser, xml_parent, data, do_default, ptype):
@@ -274,9 +276,8 @@ def run_param(parser, xml_parent, data):
 def extended_choice_param(parser, xml_parent, data):
     """yaml: extended-choice
     Creates an extended choice parameter where values can be read from a file
-    Requires the Jenkins `Extended Choice Parameter Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Extended+Choice+Parameter+plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Extended Choice Parameter Plugin
+    <Extended+Choice+Parameter+plugin>`.
 
     :arg str name: name of the parameter
     :arg str description: description of the parameter
@@ -351,9 +352,8 @@ def extended_choice_param(parser, xml_parent, data):
 def validating_string_param(parser, xml_parent, data):
     """yaml: validating-string
     A validating string parameter
-    Requires the Jenkins `Validating String Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Validating+String+Parameter+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Validating String Plugin
+    <Validating+String+Parameter+Plugin>`.
 
     :arg str name: the name of the parameter
     :arg str default: the default value of the parameter (optional)
@@ -381,9 +381,8 @@ def validating_string_param(parser, xml_parent, data):
 def svn_tags_param(parser, xml_parent, data):
     """yaml: svn-tags
     A svn tag parameter
-    Requires the Jenkins `Parameterized Trigger Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Parameterized+Trigger+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Parameterized Trigger Plugin
+    <Parameterized+Trigger+Plugin>`.
 
     :arg str name: the name of the parameter
     :arg str default: the default value of the parameter (optional)
@@ -415,9 +414,8 @@ def svn_tags_param(parser, xml_parent, data):
 def dynamic_choice_param(parser, xml_parent, data):
     """yaml: dynamic-choice
     Dynamic Choice Parameter
-    Requires the Jenkins `Jenkins Dynamic Parameter Plug-in.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Jenkins+Dynamic+Parameter+Plug-in>`_
+    Requires the Jenkins :jenkins-wiki:`Jenkins Dynamic Parameter Plug-in
+    <Dynamic+Parameter+Plug-in>`.
 
     :arg str name: the name of the parameter
     :arg str description: a description of the parameter (optional)
@@ -444,9 +442,8 @@ def dynamic_choice_param(parser, xml_parent, data):
 def dynamic_string_param(parser, xml_parent, data):
     """yaml: dynamic-string
     Dynamic Parameter
-    Requires the Jenkins `Jenkins Dynamic Parameter Plug-in.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Jenkins+Dynamic+Parameter+Plug-in>`_
+    Requires the Jenkins :jenkins-wiki:`Jenkins Dynamic Parameter Plug-in
+    <Dynamic+Parameter+Plug-in>`.
 
     :arg str name: the name of the parameter
     :arg str description: a description of the parameter (optional)
@@ -473,9 +470,8 @@ def dynamic_string_param(parser, xml_parent, data):
 def dynamic_choice_scriptler_param(parser, xml_parent, data):
     """yaml: dynamic-choice-scriptler
     Dynamic Choice Parameter (Scriptler)
-    Requires the Jenkins `Jenkins Dynamic Parameter Plug-in.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Jenkins+Dynamic+Parameter+Plug-in>`_
+    Requires the Jenkins :jenkins-wiki:`Jenkins Dynamic Parameter Plug-in
+    <Dynamic+Parameter+Plug-in>`.
 
     :arg str name: the name of the parameter
     :arg str description: a description of the parameter (optional)
@@ -511,9 +507,8 @@ def dynamic_choice_scriptler_param(parser, xml_parent, data):
 def dynamic_string_scriptler_param(parser, xml_parent, data):
     """yaml: dynamic-string-scriptler
     Dynamic Parameter (Scriptler)
-    Requires the Jenkins `Jenkins Dynamic Parameter Plug-in.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Jenkins+Dynamic+Parameter+Plug-in>`_
+    Requires the Jenkins :jenkins-wiki:`Jenkins Dynamic Parameter Plug-in
+    <Dynamic+Parameter+Plug-in>`.
 
     :arg str name: the name of the parameter
     :arg str description: a description of the parameter (optional)
@@ -593,8 +588,8 @@ def dynamic_scriptler_param_common(parser, xml_parent, data, ptype):
 def matrix_combinations_param(parser, xml_parent, data):
     """yaml: matrix-combinations
     Matrix combinations parameter
-    Requires the Jenkins `Matrix Combinations Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Matrix+Combinations+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Matrix Combinations Plugin
+    <Matrix+Combinations+Plugin>`.
 
     :arg str name: the name of the parameter
     :arg str description: a description of the parameter (optional)
@@ -622,6 +617,41 @@ def matrix_combinations_param(parser, xml_parent, data):
             combination_filter
 
     return pdef
+
+
+def copyartifact_build_selector_param(parser, xml_parent, data):
+    """yaml: copyartifact-build-selector-param
+
+    Control via a build parameter, which build the copyartifact plugin should
+    copy when it is configured to use 'build-param'. Requires the Jenkins
+    :jenkins-wiki:`Copy Artifact plugin <Copy+Artifact+Plugin>`.
+
+    :arg str name: name of the build parameter to store the selection in
+    :arg str description: a description of the parameter (optional)
+    :arg str which-build: which to provide as the default value in the UI. See
+        ``which-build`` param of :py:mod:`~builders.copyartifact` from the
+        builders module for the available values as well as options available
+        that control additional behaviour for the selected value.
+
+    Example:
+
+    .. literalinclude::
+        /../../tests/parameters/fixtures/copyartifact-build-selector001.yaml
+       :language: yaml
+
+    """
+
+    t = XML.SubElement(xml_parent, 'hudson.plugins.copyartifact.'
+                       'BuildSelectorParameter')
+    try:
+        name = data['name']
+    except KeyError:
+        raise MissingAttributeError('name')
+
+    XML.SubElement(t, 'name').text = name
+    XML.SubElement(t, 'description').text = data.get('description', '')
+
+    copyartifact_build_selector(t, data, 'defaultSelector')
 
 
 class Parameters(jenkins_jobs.modules.base.Base):

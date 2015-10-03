@@ -34,15 +34,15 @@ Example::
 
 import xml.etree.ElementTree as XML
 import jenkins_jobs.modules.base
-from jenkins_jobs.errors import JenkinsJobsException
+from jenkins_jobs.errors import InvalidAttributeError, JenkinsJobsException
 import logging
 
 
 def builds_chain_fingerprinter(parser, xml_parent, data):
     """yaml: builds-chain-fingerprinter
     Builds chain fingerprinter.
-    Requires the Jenkins `Builds chain fingerprinter Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Builds+chain+fingerprinter>`_
+    Requires the Jenkins :jenkins-wiki:`Builds chain fingerprinter Plugin
+    <Builds+chain+fingerprinter>`.
 
     :arg bool per-builds-chain: enable builds hierarchy fingerprinting
         (default False)
@@ -66,21 +66,15 @@ def builds_chain_fingerprinter(parser, xml_parent, data):
 def ownership(parser, xml_parent, data):
     """yaml: ownership
     Plugin provides explicit ownership for jobs and slave nodes.
-    Requires the Jenkins `Ownership Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Ownership+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Ownership Plugin <Ownership+Plugin>`.
 
     :arg bool enabled: whether ownership enabled (default : true)
     :arg str owner: the owner of job
     :arg list co-owners: list of job co-owners
 
-    Example::
+    Example:
 
-        properties:
-         - ownership:
-            owner: abraverm
-            co-owners:
-             - lbednar
-             - edolinin
+    .. literalinclude:: /../../tests/properties/fixtures/ownership.yaml
     """
     ownership_plugin = \
         XML.SubElement(xml_parent,
@@ -103,8 +97,8 @@ def promoted_build(parser, xml_parent, data):
     name must be created via the web interface in the job in order for the job
     promotion to persist. Promotion processes themselves cannot be configured
     by jenkins-jobs due to the separate storage of plugin configuration files.
-    Requires the Jenkins `Promoted Builds Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Promoted+Builds+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Promoted Builds Plugin
+    <Promoted+Builds+Plugin>`.
 
     :arg list names: the promoted build names
 
@@ -147,8 +141,7 @@ def github(parser, xml_parent, data):
 def least_load(parser, xml_parent, data):
     """yaml: least-load
     Enables the Least Load Plugin.
-    Requires the Jenkins `Least Load Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Least+Load+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Least Load Plugin <Least+Load+Plugin>`.
 
     :arg bool disabled: whether or not leastload is disabled (default True)
 
@@ -167,9 +160,8 @@ def least_load(parser, xml_parent, data):
 def throttle(parser, xml_parent, data):
     """yaml: throttle
     Throttles the number of builds for this job.
-    Requires the Jenkins `Throttle Concurrent Builds Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/
-    Throttle+Concurrent+Builds+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Throttle Concurrent Builds Plugin
+    <Throttle+Concurrent+Builds+Plugin>`.
 
     :arg int max-per-node: max concurrent builds per node (default 0)
     :arg int max-total: max concurrent builds (default 0)
@@ -195,7 +187,7 @@ def throttle(parser, xml_parent, data):
     XML.SubElement(throttle, 'maxConcurrentTotal').text = str(
         data.get('max-total', '0'))
     # TODO: What's "categories"?
-    #XML.SubElement(throttle, 'categories')
+    # XML.SubElement(throttle, 'categories')
     if data.get('enabled', True):
         XML.SubElement(throttle, 'throttleEnabled').text = 'true'
     else:
@@ -210,11 +202,37 @@ def throttle(parser, xml_parent, data):
     XML.SubElement(throttle, 'configVersion').text = '1'
 
 
+def sidebar(parser, xml_parent, data):
+    """yaml: sidebar
+    Allows you to add links in the sidebar.
+    Requires the Jenkins :jenkins-wiki:`Sidebar-Link Plugin
+    <Sidebar-Link+Plugin>`.
+
+    :arg str url: url to link to (optional)
+    :arg str text: text for the link (optional)
+    :arg str icon: path to icon (optional)
+
+    Example:
+
+    .. literalinclude:: /../../tests/properties/fixtures/sidebar02.yaml
+    """
+    sidebar = xml_parent.find('hudson.plugins.sidebar__link.ProjectLinks')
+    if sidebar is None:
+        sidebar = XML.SubElement(xml_parent,
+                                 'hudson.plugins.sidebar__link.ProjectLinks')
+        links = XML.SubElement(sidebar, 'links')
+    else:
+        links = sidebar.find('links')
+    action = XML.SubElement(links, 'hudson.plugins.sidebar__link.LinkAction')
+    XML.SubElement(action, 'url').text = str(data.get('url', ''))
+    XML.SubElement(action, 'text').text = str(data.get('text', ''))
+    XML.SubElement(action, 'icon').text = str(data.get('icon', ''))
+
+
 def inject(parser, xml_parent, data):
     """yaml: inject
     Allows you to inject environment variables into the build.
-    Requires the Jenkins `Env Inject Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/EnvInject+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Env Inject Plugin <EnvInject+Plugin>`.
 
     :arg str properties-file: file to read with properties (optional)
     :arg str properties-content: key=value properties (optional)
@@ -364,8 +382,8 @@ def priority_sorter(parser, xml_parent, data):
     """yaml: priority-sorter
     Allows simple ordering of builds, using a configurable job priority.
 
-    Requires the Jenkins `Priority Sorter Plugin
-    <https://wiki.jenkins-ci.org/display/JENKINS/Priority+Sorter+Plugin>`_.
+    Requires the Jenkins :jenkins-wiki:`Priority Sorter Plugin
+    <Priority+Sorter+Plugin>`.
 
     :arg int priority: Priority of the job.  Higher value means higher
         priority, with 100 as the standard priority. (required)
@@ -389,23 +407,25 @@ def build_blocker(parser, xml_parent, data):
     if at least one name of currently running jobs
     is matching with one of the given regular expressions.
 
-    Requires the Jenkins `Build Blocker Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Build+Blocker+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Build Blocker Plugin
+    <Build+Blocker+Plugin>`.
 
     :arg bool use-build-blocker: Enable or disable build blocker
-        (optional) (default true)
+        (default true)
     :arg list blocking-jobs: One regular expression per line
         to select blocking jobs by their names. (required)
 
+    :arg str block-level: block build globally ('GLOBAL') or per node ('NODE')
+        (default 'GLOBAL')
 
-    Example::
+    :arg str queue-scanning: scan build queue for all builds ('ALL') or only
+        buildable builds ('BUILDABLE') (default 'DISABLED'))
 
-        properties:
-          - build-blocker:
-              use-build-blocker: true
-              blocking-jobs:
-                - ".*-deploy"
-                - "^maintenance.*"
+
+    Example:
+
+    .. literalinclude:: \
+            /../../tests/properties/fixtures/build-blocker01.yaml
     """
     blocker = XML.SubElement(xml_parent,
                              'hudson.plugins.'
@@ -421,14 +441,30 @@ def build_blocker(parser, xml_parent, data):
         jobs = jobs + value + '\n'
     XML.SubElement(blocker, 'blockingJobs').text = jobs
 
+    block_level_list = ('GLOBAL', 'NODE')
+    block_level = data.get('block-level', 'GLOBAL')
+    if block_level not in block_level_list:
+        raise InvalidAttributeError('block-level',
+                                    block_level,
+                                    block_level_list)
+    XML.SubElement(blocker, 'blockLevel').text = block_level
+
+    queue_scanning_list = ('DISABLED', 'ALL', 'BUILDABLE')
+    queue_scanning = data.get('queue-scanning', 'DISABLED')
+    if queue_scanning not in queue_scanning_list:
+        raise InvalidAttributeError('queue-scanning',
+                                    queue_scanning,
+                                    queue_scanning_list)
+    XML.SubElement(blocker, 'scanQueueFor').text = queue_scanning
+
 
 def copyartifact(parser, xml_parent, data):
     """yaml: copyartifact
     Specify a list of projects that have access to copy the artifacts of
     this project.
 
-    Requires the Jenkins `Copy Artifact plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Copy+Artifact+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Copy Artifact plugin
+    <Copy+Artifact+Plugin>`.
 
     :arg string projects: comma separated list of projects that can copy
         artifacts of this project. Wild card character '*' is available.
@@ -463,8 +499,7 @@ def batch_tasks(parser, xml_parent, data):
     Batch tasks and builds "lock" the workspace, so when one of those
     activities is in progress, all the others will block in the queue.
 
-    Requires the Jenkins `Batch Task Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Batch+Task+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Batch Task Plugin <Batch+Task+Plugin>`.
 
     :arg list batch-tasks: Batch tasks.
 
@@ -491,8 +526,7 @@ def heavy_job(parser, xml_parent, data):
     This plugin allows you to define "weight" on each job,
     and making each job consume that many executors
 
-    Requires the Jenkins `Heavy Job Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Heavy+Job+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Heavy Job Plugin <Heavy+Job+Plugin>`.
 
     :arg int weight: Specify the total number of executors
         that this job should occupy (default 1)
@@ -515,8 +549,8 @@ def slave_utilization(parser, xml_parent, data):
     This plugin allows you to specify the percentage of a slave's capacity a
     job wants to use.
 
-    Requires the Jenkins `Slave Utilization Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Slave+Utilization+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Slave Utilization Plugin
+    <Slave+Utilization+Plugin>`.
 
     :arg int slave-percentage: Specify the percentage of a slave's execution
         slots that this job should occupy (default: 0)
@@ -542,8 +576,8 @@ def slave_utilization(parser, xml_parent, data):
 
 def delivery_pipeline(parser, xml_parent, data):
     """yaml: delivery-pipeline
-    Requires the Jenkins `Delivery Pipeline Plugin.
-    <https://wiki.jenkins-ci.org/display/JENKINS/Delivery+Pipeline+Plugin>`_
+    Requires the Jenkins :jenkins-wiki:`Delivery Pipeline Plugin
+    <Delivery+Pipeline+Plugin>`.
 
     :arg str stage: Name of the stage for this job (default: '')
     :arg str task: Name of the task for this job (default: '')

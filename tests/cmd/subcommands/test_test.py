@@ -1,46 +1,46 @@
 import os
 import io
-import codecs
 import yaml
 
 import jenkins
 
 from jenkins_jobs import cmd
 from jenkins_jobs.errors import JenkinsJobsException
-from tests.cmd.test_cmd import CmdTestsBase
 from tests.base import mock
+from tests.cmd.test_cmd import CmdTestsBase
+from tests.cmd.test_recurse_path import fake_os_walk
 
 
 os_walk_return_values = {
     '/jjb_projects': [
-        ('/jjb_projects', ('dir1', 'dir2', 'dir3'), ()),
-        ('/jjb_projects/dir1', ('bar',), ()),
-        ('/jjb_projects/dir2', ('baz',), ()),
-        ('/jjb_projects/dir3', (), ()),
-        ('/jjb_projects/dir1/bar', (), ()),
-        ('/jjb_projects/dir2/baz', (), ()),
+        ('/jjb_projects', (['dir1', 'dir2', 'dir3'], ())),
+        ('/jjb_projects/dir1', (['bar'], ())),
+        ('/jjb_projects/dir2', (['baz'], ())),
+        ('/jjb_projects/dir3', ([], ())),
+        ('/jjb_projects/dir1/bar', ([], ())),
+        ('/jjb_projects/dir2/baz', ([], ())),
     ],
     '/jjb_templates': [
-        ('/jjb_templates', ('dir1', 'dir2', 'dir3'), ()),
-        ('/jjb_templates/dir1', ('bar',), ()),
-        ('/jjb_templates/dir2', ('baz',), ()),
-        ('/jjb_templates/dir3', (), ()),
-        ('/jjb_templates/dir1/bar', (), ()),
-        ('/jjb_templates/dir2/baz', (), ()),
+        ('/jjb_templates', (['dir1', 'dir2', 'dir3'], ())),
+        ('/jjb_templates/dir1', (['bar'], ())),
+        ('/jjb_templates/dir2', (['baz'], ())),
+        ('/jjb_templates/dir3', ([], ())),
+        ('/jjb_templates/dir1/bar', ([], ())),
+        ('/jjb_templates/dir2/baz', ([], ())),
     ],
     '/jjb_macros': [
-        ('/jjb_macros', ('dir1', 'dir2', 'dir3'), ()),
-        ('/jjb_macros/dir1', ('bar',), ()),
-        ('/jjb_macros/dir2', ('baz',), ()),
-        ('/jjb_macros/dir3', (), ()),
-        ('/jjb_macros/dir1/bar', (), ()),
-        ('/jjb_macros/dir2/baz', (), ()),
+        ('/jjb_macros', (['dir1', 'dir2', 'dir3'], ())),
+        ('/jjb_macros/dir1', (['bar'], ())),
+        ('/jjb_macros/dir2', (['baz'], ())),
+        ('/jjb_macros/dir3', ([], ())),
+        ('/jjb_macros/dir1/bar', ([], ())),
+        ('/jjb_macros/dir2/baz', ([], ())),
     ],
 }
 
 
 def os_walk_side_effects(path_name, topdown):
-    return os_walk_return_values[path_name]
+    return fake_os_walk(os_walk_return_values[path_name])(path_name, topdown)
 
 
 @mock.patch('jenkins_jobs.builder.Jenkins.get_plugins_info', mock.MagicMock)
@@ -114,8 +114,7 @@ class TestTests(CmdTestsBase):
         path_list = os_walk_return_values.keys()
         paths = []
         for path in path_list:
-            paths.extend([p for p, _, _ in
-                          os_walk_return_values[path]])
+            paths.extend([p for p, _ in os_walk_return_values[path]])
 
         multipath = os.pathsep.join(path_list)
 
@@ -132,6 +131,34 @@ class TestTests(CmdTestsBase):
 
         update_job_mock.assert_called_with(paths, [], output=args.output_dir)
 
+    @mock.patch('jenkins_jobs.cmd.Builder.update_job')
+    @mock.patch('jenkins_jobs.cmd.os.path.isdir')
+    @mock.patch('jenkins_jobs.cmd.os.walk')
+    def test_recursive_multi_path_with_excludes(self, os_walk_mock, isdir_mock,
+                                                update_job_mock):
+        """
+        Run test mode and pass multiple paths with recursive path option.
+        """
+
+        os_walk_mock.side_effect = os_walk_side_effects
+        isdir_mock.return_value = True
+
+        path_list = os_walk_return_values.keys()
+        paths = []
+        for path in path_list:
+            paths.extend([p for p, __ in os_walk_return_values[path]
+                          if 'dir1' not in p and 'dir2' not in p])
+
+        multipath = os.pathsep.join(path_list)
+
+        args = self.parser.parse_args(['test', '-r', multipath, '-x',
+                                       'dir1:dir2'])
+        args.output_dir = mock.MagicMock()
+
+        cmd.execute(args, self.config)
+
+        update_job_mock.assert_called_with(paths, [], output=args.output_dir)
+
     def test_console_output(self):
         """
         Run test mode and verify that resulting XML gets sent to the console.
@@ -141,9 +168,8 @@ class TestTests(CmdTestsBase):
         with mock.patch('sys.stdout', console_out):
             cmd.main(['test', os.path.join(self.fixtures_path,
                       'cmd-001.yaml')])
-        xml_content = codecs.open(os.path.join(self.fixtures_path,
-                                               'cmd-001.xml'),
-                                  'r', 'utf-8').read()
+        xml_content = io.open(os.path.join(self.fixtures_path, 'cmd-001.xml'),
+                              'r', encoding='utf-8').read()
         self.assertEqual(console_out.getvalue().decode('utf-8'), xml_content)
 
     def test_config_with_test(self):
@@ -162,7 +188,7 @@ class TestTests(CmdTestsBase):
                          "http://test-jenkins.with.non.default.url:8080/")
 
     @mock.patch('jenkins_jobs.builder.YamlParser.generateXML')
-    @mock.patch('jenkins_jobs.builder.ModuleRegistry')
+    @mock.patch('jenkins_jobs.parser.ModuleRegistry')
     def test_plugins_info_stub_option(self, registry_mock, generateXML_mock):
         """
         Test handling of plugins_info stub option.
@@ -180,13 +206,14 @@ class TestTests(CmdTestsBase):
         with mock.patch('sys.stdout'):
             cmd.execute(args, self.config)   # probably better to fail here
 
-        with open(plugins_info_stub_yaml_file, 'r') as yaml_file:
+        with io.open(plugins_info_stub_yaml_file,
+                     'r', encoding='utf-8') as yaml_file:
             plugins_info_list = yaml.load(yaml_file)
 
         registry_mock.assert_called_with(self.config, plugins_info_list)
 
     @mock.patch('jenkins_jobs.builder.YamlParser.generateXML')
-    @mock.patch('jenkins_jobs.builder.ModuleRegistry')
+    @mock.patch('jenkins_jobs.parser.ModuleRegistry')
     def test_bogus_plugins_info_stub_option(self, registry_mock,
                                             generateXML_mock):
         """
@@ -236,3 +263,30 @@ class TestJenkinsGetPluginInfoError(CmdTestsBase):
                 self.fail("jenkins.JenkinsException propagated to main")
             except:
                 pass  # only care about jenkins.JenkinsException for now
+
+    @mock.patch('jenkins.Jenkins.get_plugins_info')
+    def test_skip_plugin_retrieval_if_no_config_provided(
+            self, get_plugins_info_mock):
+        """
+        Verify that retrieval of information from Jenkins instance about its
+        plugins will be skipped when run if no config file provided.
+        """
+        with mock.patch('sys.stdout'):
+            cmd.main(['test', os.path.join(self.fixtures_path,
+                                           'cmd-001.yaml')])
+        self.assertFalse(get_plugins_info_mock.called)
+
+    @mock.patch('jenkins.Jenkins.get_plugins_info')
+    def test_skip_plugin_retrieval_if_disabled(self, get_plugins_info_mock):
+        """
+        Verify that retrieval of information from Jenkins instance about its
+        plugins will be skipped when run if a config file provided and disables
+        querying through a config option.
+        """
+        with mock.patch('sys.stdout'):
+            cmd.main(['--conf',
+                      os.path.join(self.fixtures_path,
+                                   'disable-query-plugins.conf'),
+                      'test',
+                      os.path.join(self.fixtures_path, 'cmd-001.yaml')])
+        self.assertFalse(get_plugins_info_mock.called)

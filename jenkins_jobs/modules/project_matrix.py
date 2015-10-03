@@ -25,15 +25,15 @@ internal YAML structure:
 * slave name or label (``slave``)
 * JDK name (``jdk``)
 
-Requires the Jenkins `Matrix Project Plugin.
-<https://wiki.jenkins-ci.org/display/JENKINS/Matrix+Project+Plugin>`_
+Requires the Jenkins :jenkins-wiki:`Matrix Project Plugin
+<Matrix+Project+Plugin>`.
 
-The module supports also dynamic axis:
+The module also supports additional, plugin-defined axes:
 
-* dynamic (``dynamic``)
-
-Requires the Jenkins `dynamic axis Plugin.
-<https://wiki.jenkins-ci.org/display/JENKINS/DynamicAxis+Plugin>`_
+* DynamicAxis (``dynamic``), requires the Jenkins
+  :jenkins-wiki:`DynamicAxis Plugin <DynamicAxis+Plugin>`
+* GroovyAxis (``groovy``), requires the Jenkins
+  :jenkins-wiki:`GroovyAxis Plugin <GroovyAxis>`
 
 To tie the parent job to a specific node, you should use ``node`` parameter.
 On a matrix project, this will tie *only* the parent job.  To restrict axes
@@ -60,63 +60,12 @@ Example:
 
 .. literalinclude::  /../../tests/general/fixtures/matrix-axis003.yaml
 
-Requires the Jenkins `ShiningPanda Plugin.
-<https://wiki.jenkins-ci.org/display/JENKINS/ShiningPanda+Plugin>`_
+Requires the Jenkins :jenkins-wiki:`ShiningPanda Plugin <ShiningPanda+Plugin>`.
 
-Example::
+Example:
 
- - job:
-    name: matrix-test
-    project-type: matrix
-    execution-strategy:
-      combination-filter: |
-        !(os=="fedora11" && arch=="amd64")
-      sequential: true
-      touchstone:
-        expr: 'os == "fedora11"'
-        result: unstable
-    axes:
-      - axis:
-         type: label-expression
-         name: os
-         values:
-          - ubuntu12.04
-          - fedora11
-      - axis:
-         type: label-expression
-         name: arch
-         values:
-          - amd64
-          - i386
-      - axis:
-         type: slave
-         name: nodes
-         values:
-          - node1
-          - node2
-      - axis:
-         type: dynamic
-         name: config
-         values:
-          - config_list
-    builders:
-      - shell: make && make check
-
-Example using user-defined axis::
-
- - job:
-    name: matrix-user-defined
-    project-type: matrix
-    axes:
-      - axis:
-        type: user-defined
-        name: database
-        values:
-         - mysql
-         - postgresql
-         - sqlite
-    builders:
-     - shell: make "$database"
+  .. literalinclude::  /../../tests/yamlparser/fixtures/project-matrix001.yaml
+    :language: yaml
 
 """
 
@@ -137,6 +86,7 @@ class Matrix(jenkins_jobs.modules.base.Base):
         'dynamic': 'ca.silvermaplesolutions.jenkins.plugins.daxis.DynamicAxis',
         'python': 'jenkins.plugins.shiningpanda.matrix.PythonAxis',
         'tox': 'jenkins.plugins.shiningpanda.matrix.ToxAxis',
+        'groovy': 'org.jenkinsci.plugins.GroovyAxis',
     }
 
     def root_xml(self, data):
@@ -184,12 +134,17 @@ class Matrix(jenkins_jobs.modules.base.Base):
                 XML.SubElement(lbl_root, 'name').text = 'TOXENV'
             else:
                 XML.SubElement(lbl_root, 'name').text = str(name)
-            v_root = XML.SubElement(lbl_root, 'values')
+            if axis_type != "groovy":
+                v_root = XML.SubElement(lbl_root, 'values')
             if axis_type == "dynamic":
                 XML.SubElement(v_root, 'string').text = str(values[0])
                 XML.SubElement(lbl_root, 'varName').text = str(values[0])
                 v_root = XML.SubElement(lbl_root, 'axisValues')
                 XML.SubElement(v_root, 'string').text = 'default'
+            elif axis_type == "groovy":
+                command = XML.SubElement(lbl_root, 'groovyString')
+                command.text = axis.get('command')
+                XML.SubElement(lbl_root, 'computedValues').text = ''
             else:
                 for v in values:
                     XML.SubElement(v_root, 'string').text = str(v)
