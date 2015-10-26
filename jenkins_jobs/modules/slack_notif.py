@@ -137,6 +137,11 @@ class Slack(jenkins_jobs.modules.base.Base):
         XML.SubElement(pdefslack, 'notifyBackToNormal').text = str(
             slack.get('notify-back-to-normal', False)).lower()
 
+        custom_message = slack.get('custom-message')
+        if custom_message:
+            XML.SubElement(pdefslack, 'includeCustomMessage').text = 'true'
+            XML.SubElement(pdefslack, 'customMessage').text = custom_message
+
         publishers = xml_parent.find('publishers')
         if publishers is None:
             publishers = XML.SubElement(xml_parent, 'publishers')
