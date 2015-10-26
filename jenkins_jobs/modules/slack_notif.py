@@ -106,9 +106,9 @@ class Slack(jenkins_jobs.modules.base.Base):
         slack = data.get('slack')
         if not slack or not slack.get('enabled', True):
             return
-        if 'room' not in slack:
+        if 'room' not in slack and 'raw-channel' not in slack:
             raise jenkins_jobs.errors.YAMLFormatError(
-                "Missing slack 'room' specifier")
+                "Missing slack 'room' or 'raw-channel' specifier")
         self._load_global_data()
 
         properties = xml_parent.find('properties')
@@ -117,7 +117,11 @@ class Slack(jenkins_jobs.modules.base.Base):
         pdefslack = XML.SubElement(properties,
                                    'jenkins.plugins.slack.'
                                    'SlackNotifier_-SlackJobProperty')
-        XML.SubElement(pdefslack, 'room').text = '#' + slack['room']
+        if 'raw-channel' in slack:
+            XML.SubElement(pdefslack, 'room').text = slack['raw-channel']
+        else:
+            XML.SubElement(pdefslack, 'room').text = '#' + slack['room']
+
         XML.SubElement(pdefslack, 'startNotification').text = str(
             slack.get('notify-start', False)).lower()
         XML.SubElement(pdefslack, 'notifySuccess').text = str(
