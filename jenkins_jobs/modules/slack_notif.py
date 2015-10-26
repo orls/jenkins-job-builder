@@ -21,7 +21,10 @@ Requires the Jenkins `Slack Plugin.
 :Parameters:
   * **enabled** *(bool)*: general cut off switch. If not explicitly set to
     ``true``, no slack parameters are written to XML.
-  * **room** *(str)*: name of Slack room to post messages to
+  * **room** *(str)*: name of Slack room to post messages to. Required, unless
+    raw-channel is given. Just give the name, # is added automatically
+  * **raw-channel** *(str)*: name of Slack room or user to post messages to;
+    you are required to provide the '#' or '@' prefix yourself
   * **notify-start** *(bool)*: post messages about build start event
   * **notify-success** *(bool)*: post messages about successful build event
   * **notify-aborted** *(bool)*: post messages about aborted build event
@@ -32,6 +35,7 @@ Requires the Jenkins `Slack Plugin.
   * **notify-unstable** *(bool)*: post messages about unstable build event
   * **notify-failure** *(bool)*:  post messages about build failure event
   * **notify-back-to-normal** *(bool)*: post messages about build being back to
+  * **custom-message** *(str)*: extra message to append to the normal messages
 
 Example:
 
