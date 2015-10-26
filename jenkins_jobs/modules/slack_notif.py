@@ -33,7 +33,8 @@ Requires the Jenkins `Slack Plugin.
     multi-stage build (like maven2) where a problem in earlier stage prevented
     later stages from building.
   * **notify-unstable** *(bool)*: post messages about unstable build event
-  * **notify-failure** *(bool)*:  post messages about build failure event
+  * **notify-failure** *(bool)*:  post messages about first build failure event
+  * **notify-repeated-failure** *(bool)*:  post messages about every failure
   * **notify-back-to-normal** *(bool)*: post messages about build being back to
   * **custom-message** *(str)*: extra message to append to the normal messages
 
@@ -138,6 +139,8 @@ class Slack(jenkins_jobs.modules.base.Base):
             slack.get('notify-unstable', False)).lower()
         XML.SubElement(pdefslack, 'notifyFailure').text = str(
             slack.get('notify-failure', False)).lower()
+        XML.SubElement(pdefslack, 'notifyRepeatedFailure').text = str(
+            slack.get('notify-repeated-failure', False)).lower()
         XML.SubElement(pdefslack, 'notifyBackToNormal').text = str(
             slack.get('notify-back-to-normal', False)).lower()
 
